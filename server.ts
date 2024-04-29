@@ -4,8 +4,8 @@ import { Server } from 'socket.io'
 import socketEventHandler from './socket.server'
 
 const dev = process.env.NODE_ENV !== 'production'
-const hostname = 'localhost'
-const port = 3000
+const hostname = window.location.hostname || 'localhost'
+const port = Number(window.location.port || '3000')
 
 const app = next({ dev, hostname, port })
 const handler = app.getRequestHandler()
