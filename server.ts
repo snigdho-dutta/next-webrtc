@@ -4,8 +4,8 @@ import { Server } from 'socket.io'
 import socketEventHandler from './socket.server'
 
 const dev = process.env.NODE_ENV !== 'production'
-const hostname = window.location.hostname || 'localhost'
-const port = Number(window.location.port || '3000')
+const hostname = process.env.VERCEL_URL || 'localhost'
+const port = Number(process.env.VERCEL_PORT || '3000')
 
 const app = next({ dev, hostname, port })
 const handler = app.getRequestHandler()
