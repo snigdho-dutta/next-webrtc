@@ -32,7 +32,6 @@ const SharePage = () => {
     socket.emit('join_room', { roomId: roomName, username })
   }
   useEffect(() => {
-    if (!socket.connected) return
     socket.on('room_exists', () => {
       alert('Room already exists')
     })
