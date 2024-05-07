@@ -4,14 +4,21 @@ import { socket } from '../app/socket'
 
 type ISocketContext = {
   isConnected: boolean
-  transport: string
-  socketId: string
+  transport: string | undefined
+  socketId: string | undefined
   username: string
   users: [string, string][]
   setUsername: (username: string) => void
 }
 
-const SocketContext = createContext<ISocketContext>(null)
+const SocketContext = createContext<ISocketContext>({
+  isConnected: false,
+  transport: undefined,
+  socketId: undefined,
+  username: 'anonymous',
+  users: [],
+  setUsername: () => {},
+})
 
 const SocketContextProvider: React.FC<React.PropsWithChildren<{}>> = ({
   children,
@@ -21,7 +28,6 @@ const SocketContextProvider: React.FC<React.PropsWithChildren<{}>> = ({
   const [socketId, setSocketId] = useState<string>()
   const [username, setUsername] = useState<string>('anonymous')
   const [users, setUsers] = useState<[string, string][]>([])
-  
 
   useEffect(() => {
     if (socket.connected) {

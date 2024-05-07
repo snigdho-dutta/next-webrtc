@@ -1,10 +1,10 @@
 'use client'
 type Props = {
   isConnected: boolean
-  username: string
+  username: string | undefined
   setUsername: (username: string) => void
-  socketId: string
-  transport: string
+  socketId: string | undefined
+  transport: string | undefined
 }
 
 const InfoCard = ({

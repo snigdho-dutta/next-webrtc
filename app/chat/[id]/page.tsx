@@ -18,7 +18,7 @@ const ChatPage = () => {
 
   const onIceCandidate = useCallback(
     async (candidate: RTCIceCandidate) => {
-      if (!peerRef.current.getPeerConnection().remoteDescription) return
+      if (!peerRef.current) return
       await peerRef.current.addIceCandidate(candidate)
       socket.emit('ice-candidate', {
         candidate,
@@ -33,21 +33,23 @@ const ChatPage = () => {
     event.streams[0].getTracks().forEach((track) => {
       remoteStream.addTrack(track)
     })
+    if (!remoteStreamRef.current) return
     remoteStreamRef.current.srcObject = remoteStream
     console.log('got remote track')
     remoteStreamRef.current.onloadedmetadata = () => {
-      remoteStreamRef.current.play()
+      remoteStreamRef.current?.play()
     }
   }, [])
 
   const startLocalStream = async (
     constraints: MediaStreamConstraints = { audio: true, video: true },
-    videoRefObject: React.MutableRefObject<HTMLVideoElement> = localStreamRef
+    videoRefObject: React.RefObject<HTMLVideoElement> = localStreamRef
   ) => {
+    if (!videoRefObject.current) return
     localStream = await navigator.mediaDevices.getUserMedia(constraints)
     videoRefObject.current.srcObject = localStream
     videoRefObject.current.onloadedmetadata = () => {
-      videoRefObject.current.play()
+      videoRefObject.current?.play()
     }
   }
 
@@ -81,7 +83,10 @@ const ChatPage = () => {
   const call = async () => {
     setIsCalling(true)
     await startLocalStream()
-    peerRef.current = new WebRTCPeer(onIceCandidate, onTrack)
+    peerRef.current = new WebRTCPeer({
+      on_ice: onIceCandidate,
+      on_track: onTrack,
+    })
     await peerRef.current.addStream(localStream)
     peerRef.current.createOffer().then((offer) => {
       socket.emit('offer', {
@@ -108,7 +113,10 @@ const ChatPage = () => {
 
   const acceptOffer = async (offer: RTCSessionDescriptionInit) => {
     await startLocalStream()
-    peerRef.current = new WebRTCPeer(onIceCandidate, onTrack)
+    peerRef.current = new WebRTCPeer({
+      on_ice: onIceCandidate,
+      on_track: onTrack,
+    })
     await peerRef.current.addStream(localStream)
     const answer = await peerRef.current.acceptOffer(offer)
     socket.emit('offer_accepted', {
@@ -120,6 +128,7 @@ const ChatPage = () => {
   useEffect(() => {
     if (socket.connected) {
       socket.on('ice-candidate', async ({ candidate, socketId }) => {
+        if (!peerRef.current) return
         if (peerRef.current.getPeerConnection().remoteDescription) {
           await peerRef.current.addIceCandidate(candidate)
           console.log('ice candidate added', {
@@ -136,7 +145,7 @@ const ChatPage = () => {
       })
     }
     socket.on('answer', async ({ answer, socketId }) => {
-      await peerRef.current.acceptAnswer(answer)
+      await peerRef.current?.acceptAnswer(answer)
       setAnswer(answer)
       setCallAccepted(true)
     })
@@ -169,7 +178,7 @@ const ChatPage = () => {
         </button>
         {incommingCall && !callAccepted && (
           <button
-            onClick={() => acceptOffer(offer)}
+            onClick={() => acceptOffer(offer!)}
             className='p-2 text-bold bg-green-600 hover:bg-green-500 rounded min-w-[100px]'
           >
             Accept
