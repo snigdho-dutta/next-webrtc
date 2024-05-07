@@ -2,32 +2,39 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { socket } from '../../socket'
 import { useParams } from 'next/navigation'
-import {
-  WebRTCPeer,
-  receiveFile,
-  receiveFile2,
-  sendFile,
-  sendFile2,
-} from '../../peer'
+import { WebRTCPeer } from '../../peer'
+import { receiveFile, sendFile } from '../../../utils/helpers'
 
 type Props = {}
 
 const SharePage = (props: Props) => {
-  const [roomUsers, setRoomUsers] = useState<string[]>([])
+  const [roomUsers, setRoomUsers] = useState<
+    { id: string; username: string }[]
+  >([])
   const [file, setFile] = useState<File>()
+  const [connectionStatus, setConnectionStatus] = useState('')
   const peerRef = useRef<WebRTCPeer>()
-  const dataChanelRef = useRef<RTCDataChannel>()
   const roomId = useParams().roomId as string
 
   const createDataChannel = async (socketId: string) => {
-    peerRef.current = new WebRTCPeer(onIceCandidate, () => {})
-    peerRef.current.createDataChannel(roomId)
-    peerRef.current.getDataChannel().onmessage = (ev) => {
+    const peer: WebRTCPeer = new WebRTCPeer({
+      on_ice: onIceCandidate,
+      on_connection_state_change: (e) =>
+        setConnectionStatus(peer.getPeerConnection().connectionState || ''),
+      on_data_channel: onDataChannel,
+    })
+
+    peer.createDataChannel(roomId)
+    window.peer = peerRef.current = peer
+    peer.getDataChannel()!.onmessage = (ev) => {
       const { data } = ev
-      console.log(data)
+      if (data === 'RECEIVED') {
+        setFile(undefined)
+        // clean memory
+      }
     }
-    peerRef.current.getPeerConnection().ondatachannel = onDataChannel
-    await peerRef.current.createOffer().then((offer) => {
+    peer.getPeerConnection().ondatachannel = onDataChannel
+    await peer.createOffer().then((offer) => {
       socket.emit('offer', {
         offer,
         socketId,
@@ -37,8 +44,9 @@ const SharePage = (props: Props) => {
 
   const onIceCandidate = useCallback(
     async (candidate: RTCIceCandidate) => {
-      if (!peerRef.current.getPeerConnection().remoteDescription) return
-      await peerRef.current.addIceCandidate(candidate)
+      if (!peerRef.current) return
+      // if (!peerRef.current.getPeerConnection().remoteDescription) return
+      // await peerRef.current.addIceCandidate(candidate)
       socket.emit('ice-candidate', {
         candidate,
         socketId: roomId,
@@ -49,9 +57,9 @@ const SharePage = (props: Props) => {
 
   const onDataChannel = (event: RTCDataChannelEvent) => {
     console.log('got data channel')
-    // dataChanelRef.current = event.channel
-    // receiveFile2(event.channel)
+    if (!peerRef.current) return
     peerRef.current.setDataChannel(event.channel)
+    // receiveFile(event.channel)
     peerRef.current.receiveFile((progress) => {
       console.log('progress', progress)
     })
@@ -64,8 +72,15 @@ const SharePage = (props: Props) => {
         setRoomUsers(users)
       })
       socket.on('offer_request', async ({ offer, socketId }) => {
-        peerRef.current = new WebRTCPeer(onIceCandidate, () => {})
-        peerRef.current.getPeerConnection().ondatachannel = onDataChannel
+        window.peer = peerRef.current = new WebRTCPeer({
+          on_ice: onIceCandidate,
+          on_connection_state_change: (e) =>
+            setConnectionStatus(
+              peerRef.current?.getPeerConnection().connectionState || ''
+            ),
+          on_data_channel: onDataChannel,
+        })
+
         await peerRef.current.acceptOffer(offer).then((answer) => {
           socket.emit('offer_accepted', {
             answer,
@@ -74,11 +89,12 @@ const SharePage = (props: Props) => {
         })
       })
       socket.on('answer', async ({ answer, socketId }) => {
-        await peerRef.current.acceptAnswer(answer)
+        if (socket.id === socketId) return
+        await peerRef.current?.acceptAnswer(answer)
       })
       socket.on('ice-candidate', async ({ candidate, socketId }) => {
-        if (peerRef.current?.getPeerConnection().remoteDescription) {
-          await peerRef.current.addIceCandidate(candidate)
+        if (socket.id !== socketId) {
+          await peerRef.current!.addIceCandidate(candidate)
           console.log('added ice candidate')
         }
       })
@@ -101,39 +117,55 @@ const SharePage = (props: Props) => {
         </span>
       </h1>
       <div className='flex gap-5 relative h-full flex-1 w-full p-5'>
-        {roomUsers.map((user) => (
+        {roomUsers.map(({ id, username }) => (
           <div
-            key={user}
+            key={id}
             className={`${
-              user === socket.id
+              id === socket.id
                 ? 'absolute z-10 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-slate-500 border border-dashed p-2'
                 : 'rounded-full bg-emerald-600 w-24 h-24 grid place-items-center'
             }`}
           >
-            {user === socket.id ? (
+            {id === socket.id ? (
               <div className='flex flex-col gap-2'>
                 <input
                   type='file'
                   onChange={async (e) => {
                     const file = e.target.files?.[0]
                     if (file) {
+                      window.file = file
                       setFile(file)
+                    } else {
+                      setFile(undefined)
+                      window.file = undefined
                     }
                   }}
                   className='p-2 text-white rounded-md w-full'
                 />
-                <button onClick={() => peerRef.current.sendFile(file)}>
+                <button
+                  onClick={() => {
+                    // sendFile(file!, peerRef.current!.getDataChannel()!)
+                    peerRef.current && file && peerRef.current.sendFile(file)
+                  }}
+                >
                   Send
                 </button>
               </div>
             ) : (
               <div className='flex flex-col p-1'>
-                <button onClick={() => createDataChannel(user)} className=''>
-                  Connect
-                </button>
-                <button onClick={() => receiveFile(dataChanelRef.current)}>
-                  Receive
-                </button>
+                {connectionStatus !== 'connected' && (
+                  <button
+                    className='self-center font-bold text-lg'
+                    onClick={() => createDataChannel(id)}
+                  >
+                    +
+                  </button>
+                )}
+                <p>{connectionStatus}</p>
+
+                <p className='text-white font-semibold text-center'>
+                  {username}
+                </p>
               </div>
             )}
           </div>
@@ -141,7 +173,7 @@ const SharePage = (props: Props) => {
         <div className=''>
           <button
             onClick={() => {
-              console.log(peerRef.current.getPeerConnection())
+              console.log(peerRef.current?.getPeerConnection())
             }}
           >
             Show

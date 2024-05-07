@@ -1,9 +1,15 @@
 'use client'
-
-import { useEffect, useState } from 'react'
 import { socket } from './socket'
 import { useRouter } from 'next/navigation'
 import { useSocket } from '../context/socket.context'
+import { WebRTCPeer } from './peer'
+declare global {
+  interface Window {
+    peer?: WebRTCPeer
+    arrayBuffer?: ArrayBuffer
+    file?: File
+  }
+}
 
 export default function Home() {
   const { isConnected, transport, socketId, username, setUsername, users } =

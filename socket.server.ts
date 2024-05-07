@@ -2,6 +2,7 @@ import { Server } from 'socket.io'
 import { socket } from './app/socket'
 const users = new Map()
 const rooms: Map<string, Set<string>> = new Map()
+const usernames: Map<string, string> = new Map()
 
 const socketEventHandler = (io: Server) => {
   io.on('connection', (socket) => {
@@ -25,29 +26,46 @@ const socketEventHandler = (io: Server) => {
       rooms.forEach((users, roomId) => {
         if (users.has(socket.id)) {
           users.delete(socket.id)
-          io.to(roomId).emit('room_users', Array.from(rooms.get(roomId)))
+          usernames.delete(socket.id)
+          io.to(roomId).emit(
+            'room_users',
+            Array.from(rooms.get(roomId) || []).map((id) => {
+              return { id, username: usernames.get(id) }
+            })
+          )
         }
       })
     })
-
-    socket.on('create_room', ({ roomId }: { roomId: string }) => {
-      if (rooms.has(roomId)) {
-        socket.emit('room_exists')
-        return
-      }
-      socket.join(roomId)
-      rooms.set(roomId, new Set<string>().add(socket.id))
-      console.log('room created', roomId)
-      socket.emit('room_created')
-    })
-
-    socket.on('join_room', ({ roomId }) => {
-      if (rooms.has(roomId)) {
+    // Room events
+    socket.on(
+      'create_room',
+      ({ roomId, username }: { username: string; roomId: string }) => {
+        if (rooms.has(roomId)) {
+          socket.emit('room_exists')
+          return
+        }
         socket.join(roomId)
-        rooms.get(roomId).add(socket.id)
+        rooms.set(roomId, new Set<string>().add(socket.id))
+        usernames.set(socket.id, username)
+        console.log('room created', roomId)
+        socket.emit('room_created', { roomId })
+      }
+    )
+
+    socket.on('join_room', ({ roomId, username }) => {
+      if (rooms.has(roomId)) {
+        if (rooms.get(roomId)?.has(socket.id)) return
+        socket.join(roomId)
+        rooms.get(roomId)?.add(socket.id)
+        usernames.set(socket.id, username)
         console.log('room joined', roomId)
-        socket.emit('room_joined')
-        io.to(roomId).emit('room_users', Array.from(rooms.get(roomId)))
+        socket.emit('room_joined', { roomId })
+        io.to(roomId).emit(
+          'room_users',
+          Array.from(rooms.get(roomId) || []).map((id) => {
+            return { id, username: usernames.get(id) }
+          })
+        )
       } else {
         socket.emit('no_room')
       }
@@ -55,7 +73,12 @@ const socketEventHandler = (io: Server) => {
 
     socket.on('get_room_users', ({ roomId }) => {
       if (rooms.has(roomId)) {
-        socket.emit('room_users', Array.from(rooms.get(roomId)))
+        socket.emit(
+          'room_users',
+          Array.from(rooms.get(roomId) || []).map((id) => {
+            return { id, username: usernames.get(id) }
+          })
+        )
       }
     })
 

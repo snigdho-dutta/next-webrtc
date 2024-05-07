@@ -17,6 +17,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang='en'>
+      <meta httpEquiv='Permissions-Policy' content='interest-cohort=()' />
       <body className={inter.className + ' w-screen h-screen'}>
         <SocketContextProvider>{children}</SocketContextProvider>
       </body>
