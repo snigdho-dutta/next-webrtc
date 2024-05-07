@@ -1,4 +1,7 @@
-import { createWriteStream } from 'streamsaver'
+'use client'
+
+// import { createWriteStream } from 'streamsaver'
+
 export const uid = function () {
   return (
     Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2)
@@ -53,36 +56,36 @@ export function receiveFile(channel: RTCDataChannel) {
   }
 }
 
-// export const downloadFile = (blob: Blob, fileName: string) => {
-//   const a = document.createElement('a')
-//   const url = window.URL.createObjectURL(blob)
-//   a.href = url
-//   a.download = fileName
-//   a.click()
-//   window.URL.revokeObjectURL(url)
-//   a.remove()
-// }
-
 export const downloadFile = (blob: Blob, fileName: string) => {
-  const url = URL.createObjectURL(blob)
-  return fetch(url).then((res) => {
-    const fileStream = createWriteStream(fileName)
-    const writer = fileStream.getWriter()
-    if (!res.body) throw new Error('Blob is empty')
-
-    if (res.body.pipeTo) {
-      writer.releaseLock()
-      return res.body.pipeTo(fileStream)
-    }
-
-    const reader = res.body.getReader()
-    const pump = () =>
-      reader
-        .read()
-        .then(({ value, done }) =>
-          done ? writer.close() : writer.write(value).then(pump)
-        )
-
-    return pump()
-  })
+  const a = document.createElement('a')
+  const url = window.URL.createObjectURL(blob)
+  a.href = url
+  a.download = fileName
+  a.click()
+  window.URL.revokeObjectURL(url)
+  a.remove()
 }
+
+// export const downloadFile = (blob: Blob, fileName: string) => {
+//   const url = URL.createObjectURL(blob)
+//   return fetch(url).then((res) => {
+//     const fileStream = createWriteStream(fileName)
+//     const writer = fileStream.getWriter()
+//     if (!res.body) throw new Error('Blob is empty')
+
+//     if (res.body.pipeTo) {
+//       writer.releaseLock()
+//       return res.body.pipeTo(fileStream)
+//     }
+
+//     const reader = res.body.getReader()
+//     const pump = () =>
+//       reader
+//         .read()
+//         .then(({ value, done }) =>
+//           done ? writer.close() : writer.write(value).then(pump)
+//         )
+
+//     return pump()
+//   })
+// }

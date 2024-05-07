@@ -2,18 +2,11 @@
 type Props = {
   isConnected: boolean
   username: string | undefined
-  setUsername: (username: string) => void
   socketId: string | undefined
   transport: string | undefined
 }
 
-const InfoCard = ({
-  isConnected,
-  username,
-  setUsername,
-  socketId,
-  transport,
-}: Props) => {
+const InfoCard = ({ isConnected, username, socketId, transport }: Props) => {
   return (
     <div className='border w-fit flex flex-col p-2 gap-[0.4] rounded-lg'>
       <p>Status: {isConnected ? 'connected' : 'disconnected'}</p>

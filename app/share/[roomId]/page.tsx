@@ -7,7 +7,7 @@ import { receiveFile, sendFile } from '../../../utils/helpers'
 
 type Props = {}
 
-const SharePage = (props: Props) => {
+const RoomPage = (props: Props) => {
   const [roomUsers, setRoomUsers] = useState<
     { id: string; username: string }[]
   >([])
@@ -184,4 +184,4 @@ const SharePage = (props: Props) => {
   )
 }
 
-export default SharePage
+export default RoomPage

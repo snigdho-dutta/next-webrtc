@@ -1,16 +1,16 @@
 'use client'
 import React, { useState } from 'react'
-import { uid } from '../../utils/helpers'
-type RoomInput = {
+import { uid } from '../utils/helpers'
+type Args = {
   username: string
   roomName: string
 }
 type Props = {
-  createRoom: ({ roomName, username }: RoomInput) => void
-  joinRoom: ({ roomName, username }: RoomInput) => void
+  createRoom: ({ roomName, username }: Args) => void
+  joinRoom: ({ roomName, username }: Args) => void
 }
 
-const JoinRoom = ({ createRoom, joinRoom }: Props) => {
+const RoomInput = ({ createRoom, joinRoom }: Props) => {
   const [username, setUsername] = useState('')
   const [createRoomName, setCreateRoomName] = useState('')
   const [joinRoomName, setJoinRoomName] = useState('')
@@ -76,4 +76,4 @@ const JoinRoom = ({ createRoom, joinRoom }: Props) => {
   )
 }
 
-export default JoinRoom
+export default RoomInput

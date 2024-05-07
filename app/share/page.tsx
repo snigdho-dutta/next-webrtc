@@ -1,10 +1,10 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import { useSocket } from '../../context/socket.context'
 import { socket } from '../socket'
-import InfoCard from './InfoCard'
+import InfoCard from '../../components/InfoCard'
 import { useRouter } from 'next/navigation'
-import RoomInput from './RoomInput'
+import RoomInput from '../../components/RoomInput'
 
 const SharePage = () => {
   const { isConnected, transport, socketId, username, setUsername } =
@@ -32,6 +32,7 @@ const SharePage = () => {
     socket.emit('join_room', { roomId: roomName, username })
   }
   useEffect(() => {
+    if (!socket.connected) return
     socket.on('room_exists', () => {
       alert('Room already exists')
     })
@@ -53,7 +54,7 @@ const SharePage = () => {
       socket.off('room_joined')
       socket.off('no_room')
     }
-  })
+  }, [router])
 
   return (
     <div className='flex flex-col p-2 gap-2'>
@@ -65,7 +66,7 @@ const SharePage = () => {
       />
       <div className='flex gap-2 items-center'>
         <div className='flex flex-col  self-center justify-center w-full'>
-          <RoomInput createRoom={createRoom} joinRoom={joinRoom} />
+          <RoomInput {...{ createRoom, joinRoom }} />
         </div>
       </div>
     </div>
