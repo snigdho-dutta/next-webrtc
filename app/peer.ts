@@ -135,8 +135,23 @@ export class WebRTCPeer {
       fileReader.readAsArrayBuffer(file.slice(start, end))
     }
 
+    const send = () => {
+      if (
+        this.dataChannel!.bufferedAmount >
+        this.dataChannel!.bufferedAmountLowThreshold
+      ) {
+        this.dataChannel!.onbufferedamountlow = () => {
+          this.dataChannel!.onbufferedamountlow = null
+          send()
+        }
+        return
+      }
+    }
+    
     fileReader.onload = () => {
-      this.dataChannel!.send(fileReader.result as ArrayBuffer)
+      send()
+      const buffer = fileReader.result as ArrayBuffer
+      this.dataChannel!.send(buffer)
       currentChunk++
       if (BYTES_PER_CHUNK * currentChunk < file.size) {
         readNextChunk()
